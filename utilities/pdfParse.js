@@ -1,6 +1,6 @@
 const fs = require('fs');
 const pdf = require('pdf-parse');
-const splitIntoChunks = require('./splitChunk');
+const splitIntoChunksByTokens = require('./splitChunk');
 const PDFparser = require('pdf2json');
 
 const pdfp = new PDFparser();
@@ -70,12 +70,56 @@ const processHandBook = async () => {
   try {
     const pdfWithPageNo = await extractTextWithPageNo(pdfPathHandBook);
     console.log('Type:', typeof pdfWithPageNo);
-    console.log(pdfWithPageNo);
+    return pdfWithPageNo;
   } catch (err) {
     console.error('Error processing PDF', err);
   }
 };
 
-const testFileExtract = '../../rawDataResources/testingDataPDFparse1.json';
+let pdfWithNo = processHandBook();
 
-processHandBook();
+const testFileExtract = '../../rawDataResources/testingDataPDFparseFinal.json';
+
+const cleanPdfText = text => {
+  return text
+    .replace(/\s+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1. $2')
+    .trim();
+};
+
+const cleanPdfData = data => {
+  let workingData;
+
+  if (Array.isArray(data)) {
+    workingData = data;
+  } else if (data && typeof data === 'object') {
+    workingData = Object.values(data);
+  } else {
+    workingData = [data];
+  }
+
+  workingData.forEach(element => {
+    if (element && element.text) {
+      element.text = cleanPdfText(element.text);
+    }
+  });
+
+  console.log(workingData);
+  return workingData;
+};
+
+const runProcess = async () => {
+  let pdfWithNo = await processHandBook();
+  const cleanData = cleanPdfData(pdfWithNo);
+  return cleanData;
+};
+
+const main = async () => {
+  let cleanText = await runProcess();
+  const chunks = splitIntoChunksByTokens(cleanText);
+  console.log(chunks);
+  fs.writeFileSync(testFileExtract, JSON.stringify(chunks, null, 2));
+};
+
+main();
+

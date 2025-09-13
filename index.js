@@ -159,7 +159,7 @@ app.post('/api/chat', async (req, res) => {
                     
                     If asked about anything else, politely redirect to handbook related topics.
                     Keep responses concise and student friendly.
-                    `
+                    `,
           },
           {
             role: 'user',

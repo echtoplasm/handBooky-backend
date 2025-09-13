@@ -2,14 +2,12 @@ const splitIntoChunks = require('./splitChunk.js');
 const generateEmbedding = require('./generateEmbedding.js');
 
 const processHandbook = async (handbookText) => {
-  // Split into chunks (aim for ~500-1000 tokens per chunk)
   const chunks = splitIntoChunks(handbookText, {
     maxTokens: 800,
     overlap: 100
   });
 
   for (const chunk of chunks) {
-    // Generate embedding using Heroku Managed Inference
     const embedding = await generateEmbedding(chunk.text);
     
     // Store in pgvector database

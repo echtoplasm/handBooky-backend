@@ -1,5 +1,4 @@
 const generateEmbedding = async (text) => {
-  // Use Heroku Managed Inference for embeddings
   const response = await fetch('https://api.heroku.com/managed-inference/v1/embeddings', {
     method: 'POST',
     headers: {
@@ -7,7 +6,7 @@ const generateEmbedding = async (text) => {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'text-embedding-3-large', // or whatever embedding model Heroku offers
+      model: 'text-embedding-3-large', // might need to change this per emnbedding model
       input: text
     })
   });
