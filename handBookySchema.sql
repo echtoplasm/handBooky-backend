@@ -36,9 +36,9 @@ CREATE TABLE IF NOT EXISTS rag_chunks_website (
 
 -- Handbook chunks table for RAG system
 CREATE TABLE IF NOT EXISTS rag_chunks_handbook (
-    handbook_chunk_id TEXT PRIMARY KEY,
+    handbook_chunk_id SERIAL PRIMARY KEY,
     text              TEXT NOT NULL,
-    embedding         VECTOR(1536) NOT NULL,
+    embedding         VECTOR(1024) NOT NULL,
     page_number       INT,
     last_modified     TIMESTAMPTZ DEFAULT NOW(),
     fetched_at        TIMESTAMPTZ DEFAULT NOW(),

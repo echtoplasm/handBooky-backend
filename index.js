@@ -143,6 +143,19 @@ app.post('/api/chat', async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
 
+    const userEmbedding = await generateEmbedding(message);
+
+    const searchResults = await pool.query(`
+      select text, page_number, (embedding <=> $1::vector) as similarity_score
+      from rag_chunks_handbook
+      order_by embedding <=> $1::vector
+      limit 3
+`, [JSON.stringify(userEmbedding)]);
+
+    const context = searchResults.rows 
+                    .map(row => row.text)
+                    .join('\n\n');
+
     const response = await axios.post(
       `${process.env.INFERENCE_URL}/v1/chat/completions`,
       {
@@ -157,6 +170,8 @@ app.post('/api/chat', async (req, res) => {
                       - Campus resources 
                       - Student Life
                     
+                    Here is the the context for the handbook: ${context}, 
+
                     If asked about anything else, politely redirect to handbook related topics.
                     Keep responses concise and student friendly.
                     `,

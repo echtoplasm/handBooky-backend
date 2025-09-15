@@ -1,9 +1,9 @@
 const splitIntoChunksByTokens = (data, options = {}) => {
-  const { maxTokens = 800, overlap = 100 } = options;
+  const { maxTokens = 400, overlap = 100 } = options;
   
   const CHARS_PER_TOKEN = 4;
   const MAX_CHUNK_CHARS = maxTokens * CHARS_PER_TOKEN;
-  const MIN_CHUNK_CHARS = Math.floor(MAX_CHUNK_CHARS * 0.);
+  const MIN_CHUNK_CHARS = Math.floor(MAX_CHUNK_CHARS * 0.4);
   const OVERLAP_CHARS = overlap * CHARS_PER_TOKEN;
   
   const chunks = [];

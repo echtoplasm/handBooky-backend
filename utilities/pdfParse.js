@@ -49,7 +49,7 @@ const extractTextWithPageNo = pdfPath => {
       } catch (error) {
         reject(error);
       }
-    }); 
+    });
 
     parser.on('pdfParser_dataError', errData => {
       reject(errData.parserError);
@@ -84,6 +84,8 @@ const cleanPdfText = text => {
   return text
     .replace(/\s+/g, ' ')
     .replace(/([a-z])([A-Z])/g, '$1. $2')
+    .replace(/[^\w\s.,!?-]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 };
 
@@ -113,13 +115,14 @@ const runProcess = async () => {
   return cleanData;
 };
 
+const filePath = '../../rawDataResources/handbookPDFparseFinal.json';
+
 const cleanObjReturn = async () => {
   let cleanText = await runProcess();
   const chunks = splitIntoChunksByTokens(cleanText);
   return chunks;
 };
 
+cleanObjReturn();
+
 module.exports = cleanObjReturn;
-
-
-
