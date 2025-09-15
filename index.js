@@ -1,10 +1,12 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
-const pool = require('./db');
 const axios = require('axios');
 const generateEmbedding = require('./utilities/generateEmbedding.js');
 require('dotenv').config();
+
+
+const { pool } = require('./db.js');
 
 const corsOptions = {
   origin: [
