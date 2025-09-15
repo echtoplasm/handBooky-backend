@@ -3,6 +3,7 @@ const app = express();
 const cors = require('cors');
 const pool = require('./db');
 const axios = require('axios');
+const generateEmbedding = require('./utilities/generateEmbedding.js');
 require('dotenv').config();
 
 const corsOptions = {
@@ -145,16 +146,17 @@ app.post('/api/chat', async (req, res) => {
 
     const userEmbedding = await generateEmbedding(message);
 
-    const searchResults = await pool.query(`
+    const searchResults = await pool.query(
+      `
       select text, page_number, (embedding <=> $1::vector) as similarity_score
       from rag_chunks_handbook
       order_by embedding <=> $1::vector
       limit 3
-`, [JSON.stringify(userEmbedding)]);
+`,
+      [JSON.stringify(userEmbedding)]
+    );
 
-    const context = searchResults.rows 
-                    .map(row => row.text)
-                    .join('\n\n');
+    const context = searchResults.rows.map(row => row.text).join('\n\n');
 
     const response = await axios.post(
       `${process.env.INFERENCE_URL}/v1/chat/completions`,
