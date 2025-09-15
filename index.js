@@ -5,7 +5,6 @@ const axios = require('axios');
 const generateEmbedding = require('./utilities/generateEmbedding.js');
 require('dotenv').config();
 
-
 const { pool } = require('./db.js');
 
 const corsOptions = {
@@ -152,7 +151,7 @@ app.post('/api/chat', async (req, res) => {
       `
       select text, page_number, (embedding <=> $1::vector) as similarity_score
       from rag_chunks_handbook
-      order_by embedding <=> $1::vector
+      order by embedding <=> $1::vector
       limit 3
 `,
       [`[${userEmbedding.join(',')}]`]
