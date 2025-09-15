@@ -155,7 +155,7 @@ app.post('/api/chat', async (req, res) => {
       order_by embedding <=> $1::vector
       limit 3
 `,
-      [JSON.stringify(userEmbedding)]
+      [`[${userEmbedding.join(',')}]`]
     );
 
     const context = searchResults.rows.map(row => row.text).join('\n\n');
