@@ -168,7 +168,7 @@ app.post('/api/chat', async (req, res) => {
             role: 'system',
             content: `You are a helpful assistant for a student handbook app.
                       Only answer questions related to:
-                      - SChool policies and procedures
+                      - School policies and procedures
                       - Academic information 
                       - Campus resources 
                       - Student Life

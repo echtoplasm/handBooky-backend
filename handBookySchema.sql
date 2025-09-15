@@ -34,6 +34,14 @@ CREATE TABLE IF NOT EXISTS rag_chunks_website (
     metadata      JSONB DEFAULT '{}'::JSONB
 );
 
+-- Website chunks table for RAG system
+CREATE TABLE IF NOT EXISTS rag_chunks_website (
+    website_chunk_id TEXT NOT NULL,
+    text TEXT NOT NULL,
+    embedding VECTOR(1024) NOT NULL,    
+    metadata JSONB DEFAULT '{}'::JSONB
+);
+
 -- Handbook chunks table for RAG system
 CREATE TABLE IF NOT EXISTS rag_chunks_handbook (
     handbook_chunk_id SERIAL PRIMARY KEY,
