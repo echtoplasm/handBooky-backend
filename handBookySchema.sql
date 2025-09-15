@@ -39,17 +39,10 @@ CREATE TABLE IF NOT EXISTS rag_chunks_handbook (
     handbook_chunk_id TEXT PRIMARY KEY,
     text              TEXT NOT NULL,
     embedding         VECTOR(1536) NOT NULL,
-    doc_id            TEXT NOT NULL,
-    title             TEXT,
-    section           TEXT,                   -- e.g., "policies", "procedures", "academic"
-    content_type      TEXT,                   -- e.g., "policy", "procedure", "guideline"
     page_number       INT,
-    last_modified     TIMESTAMPTZ,
-    fetched_at        TIMESTAMPTZ,
-    heading_path      TEXT[] DEFAULT '{}',
+    last_modified     TIMESTAMPTZ DEFAULT NOW(),
+    fetched_at        TIMESTAMPTZ DEFAULT NOW(),
     chunk_index       INT,
-    char_start        INT,
-    char_end          INT,
     metadata          JSONB DEFAULT '{}'::JSONB
 );
 

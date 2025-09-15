@@ -15,4 +15,4 @@ const generateEmbedding = async (text) => {
   return data.data[0].embedding;
 };
 
-export default generateEmbedding;
+module.exports = generateEmbedding;

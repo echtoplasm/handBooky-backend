@@ -49,7 +49,7 @@ const extractTextWithPageNo = pdfPath => {
       } catch (error) {
         reject(error);
       }
-    });
+    }); 
 
     parser.on('pdfParser_dataError', errData => {
       reject(errData.parserError);
@@ -104,7 +104,6 @@ const cleanPdfData = data => {
     }
   });
 
-  console.log(workingData);
   return workingData;
 };
 
@@ -114,12 +113,13 @@ const runProcess = async () => {
   return cleanData;
 };
 
-const main = async () => {
+const cleanObjReturn = async () => {
   let cleanText = await runProcess();
   const chunks = splitIntoChunksByTokens(cleanText);
-  console.log(chunks);
-  fs.writeFileSync(testFileExtract, JSON.stringify(chunks, null, 2));
+  return chunks;
 };
 
-main();
+module.exports = cleanObjReturn;
+
+
 
