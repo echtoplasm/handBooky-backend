@@ -1,15 +1,45 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const { pool } = require('../db.js');
+require('dotenv').config({path: './.env'});
 
-require('dotenv').config({ path: '../.env'});
+const { Pool } = require('pg');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+
 
 const EMBEDDING_URL = process.env.EMBEDDING_URL;
 const EMBEDDING_KEY = process.env.EMBEDDING_KEY;
 const EMBEDDING_MODEL_ID = process.env.EMBEDDING_MODEL_ID;
 
-const siteMapPath = path.join(__dirname, '../../rawDataResources/abtech_chunks.jsonl');
+if (!EMBEDDING_URL || !EMBEDDING_KEY || !EMBEDDING_MODEL_ID) {
+  console.error('Missing required environment variables.');
+  console.log('Set them up using the following commands:');
+  console.log('export EMBEDDING_URL=$(heroku config:get -a $APP_NAME EMBEDDING_URL)');
+  console.log('export EMBEDDING_KEY=$(heroku config:get -a $APP_NAME EMBEDDING_KEY)');
+  console.log('export EMBEDDING_MODEL_ID=$(heroku config:get -a $APP_NAME EMBEDDING_MODEL_ID)');
+  process.exit(1);
+}
+
+const testConnection = async () => {
+  try {
+    const client = await pool.connect();
+    console.log('Successfully connected to Heroku Postgres!');
+    const result = await client.query('SELECT NOW()');
+    console.log('Database time:', result.rows[0]);
+    client.release();
+  } catch (err) {
+    console.error('Connection failed:', err);
+  }
+};
+
+testConnection();
+
+
+const siteMapPath = './rawDataResources/abtech_chunks.jsonl';
 const siteMapContent = fs.readFileSync(siteMapPath, 'utf8');
 
 const lines = siteMapContent.trim().split('\n');
@@ -28,7 +58,7 @@ lines.forEach((line, index) => {
   }
 });
 
-const siteMapJsonPath = path.join(__dirname, '../../rawDataResources/abtech_chunks.json');
+const siteMapJsonPath = './rawDataResources/abtech_chunks.json';
 const siteMapJSON = fs.readFileSync(siteMapJsonPath, 'utf-8');
 
 const jsonTrue = JSON.parse(siteMapJSON);
@@ -76,26 +106,28 @@ const generateSiteMapEmbedding = async text => {
 const insertSiteMapEmbedding = async () => {
   let failed = 0;
   const semanticObj = await nonSemanticFilter(jsonTrue);
+  const client = await pool.connect();
+  try {
+    for (const [index, page] of semanticObj.entries()) {
+      try {
+        const truncatedText = page.text.length > 2000 ? page.text.substring(0, 2000) : page.text;
+        const embedding = await generateSiteMapEmbedding(truncatedText);
 
-  for (const [index, page] of semanticObj.entries()) {
-    try {
-      const truncatedText = page.text.length > 2000 ? page.text.substring(0, 2000) : page.text;
-      const embedding = await generateSiteMapEmbedding(truncatedText);
-
-      await pool.query(
-        `
+        await client.query(
+          `
           Insert into rag_chunks_website (website_chunk_id ,text, embedding, metadata)
           values ($1, $2, $3, $4)
         `,
-        [page.id, truncatedText, JSON.stringify(embedding), JSON.stringify(page.metadata)]
-      );
-    } catch (err) {
-      failed++;
-      console.error(`Failed to process website_chunk ${index}`, err.message);
-      continue;
+          [page.id, truncatedText, JSON.stringify(embedding), JSON.stringify(page.metadata)]
+        );
+      } catch (err) {
+        failed++;
+        console.error(`Failed to process website_chunk ${index}`, err.message);
+      }
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
-
-    await new Promise(resolve => setTimeout(resolve, 2000));
+  } finally {
+    client.release();
   }
 
   console.log(`number of failed insertions: ${failed}`);
