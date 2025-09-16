@@ -148,16 +148,27 @@ app.post('/api/chat', async (req, res) => {
     const userEmbedding = await generateEmbedding(message);
 
     const searchResults = await pool.query(
-      `
-      select text, page_number, (embedding <=> $1::vector) as similarity_score
-      from rag_chunks_handbook
-      order by embedding <=> $1::vector
-      limit 3
-`,
+      `(
+      SELECT text, page_number::text as source_info, 'handbook' as source_type, 
+         (embedding <=> $1::vector) as similarity_score
+      FROM rag_chunks_handbook
+      )
+      UNION ALL
+      (
+      SELECT text, 
+          COALESCE(metadata->>'page', metadata->>'url', 'website') as source_info,
+          'website' as source_type,
+          (embedding <=> $1::vector) as similarity_score
+        FROM rag_chunks_website
+          )
+        ORDER BY similarity_score
+        LIMIT 3`,
       [`[${userEmbedding.join(',')}]`]
     );
 
-    const context = searchResults.rows.map(row => row.text).join('\n\n');
+    const context = searchResults.rows
+      .map(row => `[${row.source_type} - ${row.source_info}] ${row.text}`)
+      .join('\n\n');
 
     const response = await axios.post(
       `${process.env.INFERENCE_URL}/v1/chat/completions`,
@@ -173,13 +184,12 @@ app.post('/api/chat', async (req, res) => {
                       - Campus resources 
                       - Student Life
                     
-                    Here is the the context for the handbook: ${context}, 
+                    Here is the the context for the handbook and website: ${context}, 
 
                     If asked about anything else, politely redirect to handbook related topics.
                     Keep responses concise and student friendly.
 
-                    Be sure to include the contextual page number in the handbook that the information
-                    was taken from.
+                    Be sure to include the contextual page number in the handbook that the information was taken from or the source from the website that the user was taken from.
                     `,
           },
           {
