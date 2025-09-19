@@ -155,14 +155,16 @@ app.post('/api/chat', async (req, res) => {
       )
       UNION ALL
       (
-      SELECT text, 
-          COALESCE(metadata->>'page', metadata->>'url', 'website') as source_info,
+      SELECT text,
           'website' as source_type,
+          metadata->>'section' as section_type,
+          COALESCE(metadata->>'page', metadata->>'url', 'website') as source_info,
+          COALESCE(metadata->>'prerequisites', metadata->>'corequisites') as class_requisites,
           (embedding <=> $1::vector) as similarity_score
         FROM rag_chunks_website
           )
         ORDER BY similarity_score
-        LIMIT 3`,
+        LIMIT 7`,
       [`[${userEmbedding.join(',')}]`]
     );
 
@@ -177,7 +179,7 @@ app.post('/api/chat', async (req, res) => {
         messages: [
           {
             role: 'system',
-            content: `You are a helpful assistant for a student handbook app.
+            content: `You are a helpful assistant for a student handbook and website indexing app for Asheville Buncombe Technical College.
                       Only answer questions related to:
                       - School policies and procedures
                       - Academic information 
