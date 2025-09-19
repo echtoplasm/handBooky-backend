@@ -166,7 +166,9 @@ app.post('/api/chat', async (req, res) => {
           'website' as source_type,
           metadata->>'section' as section_type,
           COALESCE(metadata->>'page', metadata->>'url', 'website') as source_info,
-          COALESCE(metadata->>'prerequisites', metadata->>'corequisites') as class_requisites,
+          COALESCE(metadata->>'prerequisites') as class_prerequisites,
+          COALESCE(metadata->>'corequisites') as class_corequisities,
+          COALESCE(metadata->>'url') as url_source,
           (embedding <=> $1::vector) as similarity_score
         FROM 
           rag_chunks_website
@@ -178,7 +180,7 @@ app.post('/api/chat', async (req, res) => {
     );
 
     const context = searchResults.rows
-      .map(row => `[${row.source_type} - ${row.source_info}] ${row.text}`)
+      .map(row => `[${row.source_type} - ${row.source_info}] ${row.text} - Class prerequisites: ${row.class_prerequisites} Class corequisites: ${row.class_corequisities} -- Source URL: ${row.url_soruce}`)
       .join('\n\n');
 
     const response = await axios.post(
