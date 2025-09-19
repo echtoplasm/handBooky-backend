@@ -154,7 +154,9 @@ app.post('/api/chat', async (req, res) => {
              page_number::text as source_info,
              'handbook' as source_type,
              NULL as section_type,
-             NULL as class_requisites,
+             NULL as class_prerequisites,
+             NULL as class_corequisities,
+             NULL as url_source,
              (embedding <=> $1::vector) as similarity_score
       FROM 
              rag_chunks_handbook
@@ -180,7 +182,10 @@ app.post('/api/chat', async (req, res) => {
     );
 
     const context = searchResults.rows
-      .map(row => `[${row.source_type} - ${row.source_info}] ${row.text} - Class prerequisites: ${row.class_prerequisites} Class corequisites: ${row.class_corequisities} -- Source URL: ${row.url_soruce}`)
+      .map(
+        row =>
+          `[${row.source_type} - ${row.source_info}] ${row.text} - Class prerequisites: ${row.class_prerequisites} Class corequisites: ${row.class_corequisities} -- Source URL: ${row.url_soruce}`
+      )
       .join('\n\n');
 
     const response = await axios.post(
