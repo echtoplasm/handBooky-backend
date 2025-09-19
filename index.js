@@ -149,21 +149,30 @@ app.post('/api/chat', async (req, res) => {
 
     const searchResults = await pool.query(
       `(
-      SELECT text, page_number::text as source_info, 'handbook' as source_type, 
-         (embedding <=> $1::vector) as similarity_score
-      FROM rag_chunks_handbook
+      SELECT 
+             text,
+             page_number::text as source_info,
+             'handbook' as source_type,
+             NULL as section_type,
+             NULL as class_requisites,
+             (embedding <=> $1::vector) as similarity_score
+      FROM 
+             rag_chunks_handbook
       )
       UNION ALL
       (
-      SELECT text,
+      SELECT 
+          text,
           'website' as source_type,
           metadata->>'section' as section_type,
           COALESCE(metadata->>'page', metadata->>'url', 'website') as source_info,
           COALESCE(metadata->>'prerequisites', metadata->>'corequisites') as class_requisites,
           (embedding <=> $1::vector) as similarity_score
-        FROM rag_chunks_website
-          )
-        ORDER BY similarity_score
+        FROM 
+          rag_chunks_website
+        )
+        ORDER BY 
+          similarity_score
         LIMIT 7`,
       [`[${userEmbedding.join(',')}]`]
     );
