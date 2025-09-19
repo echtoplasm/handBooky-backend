@@ -167,10 +167,19 @@ app.post('/api/chat', async (req, res) => {
           text,
           'website' as source_type,
           metadata->>'section' as section_type,
-          COALESCE(metadata->>'page', metadata->>'url', 'website') as source_info,
-          COALESCE(metadata->>'prerequisites') as class_prerequisites,
-          COALESCE(metadata->>'corequisites') as class_corequisities,
-          COALESCE(metadata->>'url') as url_source,
+          CASE 
+            WHEN metadata->'prerequisites' IS NOT NULL 
+            THEN array_to_string(
+              ARRAY(SELECT jsonb_array_elements_text(metadata->'prerequisites')), 
+              ', '
+            )
+            WHEN metadata->'corequisites' IS NOT NULL
+            THEN array_to_string(
+              ARRAY(SELECT jsonb_array_elements_text(metadata->'corequisites')), 
+              ', '
+            )
+            ELSE NULL
+          END as class_requisites,
           (embedding <=> $1::vector) as similarity_score
         FROM 
           rag_chunks_website
@@ -179,6 +188,13 @@ app.post('/api/chat', async (req, res) => {
           similarity_score
         LIMIT 7`,
       [`[${userEmbedding.join(',')}]`]
+    );
+
+    console.log('Number of results:', searchResults.rows.length);
+    console.log('Sample result:', JSON.stringify(searchResults.rows[0], null, 2));
+    console.log(
+      'Similarity scores:',
+      searchResults.rows.map(r => r.similarity_score)
     );
 
     const context = searchResults.rows
