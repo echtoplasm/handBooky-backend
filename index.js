@@ -149,44 +149,49 @@ app.post('/api/chat', async (req, res) => {
 
     const searchResults = await pool.query(
       `(
-      SELECT 
-             text,
-             page_number::text as source_info,
-             'handbook' as source_type,
-             NULL as section_type,
-             NULL as class_prerequisites,
-             NULL as class_corequisities,
-             NULL as url_source,
-             (embedding <=> $1::vector) as similarity_score
-      FROM 
-             rag_chunks_handbook
+SELECT 
+    text,
+    page_number::text as source_info,
+    'handbook' as source_type,
+    NULL as source_url,
+    NULL as section_type,
+    NULL as class_prerequisites,
+    NULL as class_corequisites,
+    (embedding <=> $1::vector) as similarity_score
+FROM 
+    rag_chunks_handbook
+)
+UNION ALL
+(
+SELECT 
+    text,
+    COALESCE(metadata->>'page', metadata->>'url', 'website') as source_info,
+    'website' as source_type,
+    metadata->>'url' as source_url,
+    metadata->>'section' as section_type,
+    CASE 
+      WHEN metadata->'prerequisites' IS NOT NULL 
+      THEN array_to_string(
+        ARRAY(SELECT jsonb_array_elements_text(metadata->'prerequisites')), 
+        ', '
       )
-      UNION ALL
-      (
-      SELECT 
-          text,
-          'website' as source_type,
-          metadata->>'section' as section_type,
-          CASE 
-            WHEN metadata->'prerequisites' IS NOT NULL 
-            THEN array_to_string(
-              ARRAY(SELECT jsonb_array_elements_text(metadata->'prerequisites')), 
-              ', '
-            )
-            WHEN metadata->'corequisites' IS NOT NULL
-            THEN array_to_string(
-              ARRAY(SELECT jsonb_array_elements_text(metadata->'corequisites')), 
-              ', '
-            )
-            ELSE NULL
-          END as class_requisites,
-          (embedding <=> $1::vector) as similarity_score
-        FROM 
-          rag_chunks_website
-        )
-        ORDER BY 
-          similarity_score
-        LIMIT 7`,
+      ELSE NULL
+    END as class_prerequisites,
+    CASE 
+      WHEN metadata->'corequisites' IS NOT NULL
+      THEN array_to_string(
+        ARRAY(SELECT jsonb_array_elements_text(metadata->'corequisites')), 
+        ', '
+      )
+      ELSE NULL
+    END as class_corequisites,
+    (embedding <=> $1::vector) as similarity_score
+FROM 
+    rag_chunks_website
+)
+ORDER BY 
+    similarity_score
+LIMIT 7`,
       [`[${userEmbedding.join(',')}]`]
     );
 
@@ -198,11 +203,22 @@ app.post('/api/chat', async (req, res) => {
     );
 
     const context = searchResults.rows
-      .map(
-        row =>
-          `[${row.source_type} - ${row.source_info}] ${row.text} - Class prerequisites: ${row.class_prerequisites} Class corequisites: ${row.class_corequisities} -- Source URL: ${row.url_soruce}`
-      )
-      .join('\n\n');
+      .map(row => {
+        let contextString = `Source: ${row.source_type}`;
+        if (row.source_info) contextString += ` (${row.source_info})`;
+        if (row.section_type) contextString += ` - Section: ${row.section_type}`;
+        contextString += `\nContent: ${row.text}`;
+
+        if (row.class_prerequisites) {
+          contextString += `\nPrerequisites: ${row.class_prerequisites}`;
+        }
+        if (row.class_corequisites) {
+          contextString += `\nCorequisites: ${row.class_corequisites}`;
+        }
+
+        return contextString;
+      })
+      .join('\n\n---\n\n');
 
     const response = await axios.post(
       `${process.env.INFERENCE_URL}/v1/chat/completions`,
