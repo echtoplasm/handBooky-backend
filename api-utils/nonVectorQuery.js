@@ -1,6 +1,5 @@
 const nonVectorQuery = param => {
-  return (
-    `SELECT
+  return `SELECT
             text,
             COALESCE(metadata->>'page', metadata->>'url', 'website') as source_info,
             'website' as source_type,
@@ -29,8 +28,8 @@ const nonVectorQuery = param => {
             END as course_code,
            FROM 
             rag_chunks_website
-           WHERE metadata->>'doc_id' ILIKE $1`,
-  );
+           WHERE metadata->>'doc_id' ILIKE $1`
+  
 };
 
 module.exports = nonVectorQuery;
