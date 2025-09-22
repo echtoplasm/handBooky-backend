@@ -25,7 +25,7 @@ const nonVectorQuery = param => {
               WHEN metadata->>'content_type' = 'course'
               THEN substring(metadata->>'doc_id' from '/([A-Z]{2,4}-\d{2,4})-')
               ELSE null 
-            END as course_code,
+            END as course_code
            FROM 
             rag_chunks_website
            WHERE metadata->>'doc_id' ILIKE $1`
