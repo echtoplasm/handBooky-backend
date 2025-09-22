@@ -111,7 +111,9 @@ LIMIT 7`,
     );
 
     console.log('Number of results:', searchResults.rows.length);
-    console.log('Sample result:', JSON.stringify(searchResults.rows[0], null, 2));
+    console.log('Course Codes:', searchResults.rows.map(r => r.course_code));
+    console.log('Text returned:', searchResults.rows.map(r => r.text.substring(0, 100)));
+
     console.log(
       'Similarity scores:',
       searchResults.rows.map(r => r.similarity_score)
@@ -153,19 +155,6 @@ LIMIT 7`,
 
                     CONTEXT PROVIDED:
                     ${context}
-
-                    PREREQUISITE CHAIN ANALYSIS INSTRUCTIONS:
-                    When discussing course prerequisites, you should:
-                    1. **Identify prerequisite relationships**: Look for courses mentioned as prerequisites in the context and explain the chain
-                    2. **Build the sequence**: If Student asks about a course path, trace backwards from the target course through all prerequisite levels
-                    3. **Present clear progression**: Show the logical order students should take courses (e.g., "First take X, then Y, then Z")
-                    4. **Handle multiple paths**: If there are different prerequisite options (OR conditions), present all valid pathways
-                    5. **Flag missing links**: If you see a prerequisite mentioned but don't have details about that prerequisite's own requirements, mention this gap
-
-                    EXAMPLES of prerequisite chain responses:
-                    - "To take MAT-171 You will need: One set "
-                    - "The path to Calculus II is: College Algebra → Trigonometry OR Pre-Calculus → Calculus I → Calculus II"
-                    - "I can see that Chemistry 201 requires Chemistry 101, but I don't have information about Chemistry 101's prerequisites in this context"
 
                     INSTRUCTIONS:
                     - If asked about anything outside the scope above, politely redirect to handbook-related topics
