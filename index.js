@@ -46,97 +46,6 @@ app.get('/', (req, res) => {
   res.json({ message: 'Server is running!' });
 });
 
-app.post('/handbooks', async (req, res) => {
-  try {
-    const {
-      handbook_id,
-      title,
-      description,
-      file_path,
-      file_size,
-      upload_user_id,
-      school_id,
-      grade_level,
-      subject,
-      academic_year,
-      is_public,
-    } = req.body;
-
-    const query = `
-      INSERT into handbooks
-      (handbook_id, title, description, file_path,
-        upload_user_id, school_id, grade_level, subject, academic_year, 
-        is_public)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      returning *
-      `;
-
-    const values = [
-      handbook_id,
-      title,
-      description || null,
-      file_path,
-      file_size || null,
-      upload_user_id,
-      school_id,
-      grade_level,
-      subject,
-      academic_year,
-      is_public,
-    ];
-
-    const result = await pool.query(query, values);
-
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-  }
-});
-
-app.post('/air', async (req, res) => {
-  try {
-    const {
-      resource_id,
-      section_id,
-      handbook_id,
-      resource_type,
-      title,
-      content,
-      content_embedding,
-      difficulty_level,
-      estimated_time_minutes,
-      generated_by_model,
-    } = req.body;
-
-    const query = `insert into ai_resources 
-                        (resource_id, section_id, handbook_id, resource_type,
-                         title, content, content_embedding, difficulty_level, estimated_time_minutes, 
-                            generated_by_model)
-                    values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-                    returning *`;
-
-    const values = [
-      resource_id,
-      section_id,
-      handbook_id,
-      resource_type,
-      title,
-      content,
-      content_embedding,
-      difficulty_level,
-      estimated_time_minutes,
-      generated_by_model,
-    ];
-
-    const insertAiResources = await pool.query(query, values);
-
-    res.json({ message: 'ai resource inserted' });
-  } catch (err) {
-    console.error('Unable to post ai resources', err.message);
-    return res.status(404).json({ error: 'Unable to post ai resource' });
-  }
-});
-
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, model = 'claude-3-5-haiku' } = req.body;
@@ -227,20 +136,30 @@ LIMIT 7`,
         messages: [
           {
             role: 'system',
-            content: `You are a helpful assistant for a student handbook and website indexing app for Asheville Buncombe Technical College.
-                      Only answer questions related to:
-                      - School policies and procedures
-                      - Academic information 
-                      - Campus resources 
-                      - Student Life
-                    
-                    Here is the the context for the handbook and website: ${context}, 
+            content: `
+                    SCOPE: Only answer questions related to:
+                    - School policies and procedures
+                    - Academic information (courses, programs, requirements)
+                    - Campus resources and services
+                    - Student life and activities
+                    - Admissions and registration
+                    - Financial aid and tuition
 
-                    If asked about anything else, politely redirect to handbook related topics.
-                    Keep responses concise and student friendly.
+                    CONTEXT PROVIDED:
+                    ${context}
 
-                    Be sure to include the contextual page number in the handbook that the information was taken from or the source from the website that the user was taken from.
-                    `,
+                    INSTRUCTIONS:
+                    - If asked about anything outside the scope above, politely redirect to handbook-related topics
+                    - Keep responses concise, clear, and student-friendly
+                    - Always cite your sources by mentioning the specific handbook page number or website section
+                    - If no relevant information is found in the context, say so and suggest contacting the appropriate office
+                    - For class information, include prerequisites and corequisites when available
+                    - Use a helpful, supportive tone appropriate for students
+
+                    EXAMPLE CITATIONS:
+                    - "According to page 45 of the student handbook..."
+                    - "Based on the Academic Policies section of the website..."
+                    - "As stated in the Financial Aid section..."`,
           },
           {
             role: 'user',
