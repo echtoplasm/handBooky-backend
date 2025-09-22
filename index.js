@@ -4,6 +4,8 @@ const cors = require('cors');
 const axios = require('axios');
 const generateEmbedding = require('./utilities/generateEmbedding.js');
 require('dotenv').config();
+const nonVectorQuery = require('./api-utils/nonVectorQuery');
+const vectorQuery = require('./api-utils/vectorQuery');
 
 const { pool } = require('./db.js');
 
@@ -49,75 +51,43 @@ app.get('/', (req, res) => {
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, model = 'claude-3-5-haiku' } = req.body;
-
+    
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    const userEmbedding = await generateEmbedding(message);
+    const courseCodePattern = /\b([A-Z]{2,4}-\d{2,4})\b/g;
+    const courseCodes = message.match(courseCodePattern);
+    let searchResults;
 
-    const searchResults = await pool.query(
-      `(
-SELECT 
-    text,
-    page_number::text as source_info,
-    'handbook' as source_type,
-    NULL as source_url,
-    NULL as section_type,
-    NULL as class_prerequisites,
-    NULL as class_corequisites,
-    NULL as course_code,
-    (embedding <=> $1::vector) as similarity_score
-FROM 
-    rag_chunks_handbook
-)
-UNION ALL
-(
-SELECT 
-    text,
-    COALESCE(metadata->>'page', metadata->>'url', 'website') as source_info,
-    'website' as source_type,
-    metadata->>'url' as source_url,
-    metadata->>'section' as section_type,
-    CASE 
-      WHEN metadata->'prerequisites' IS NOT NULL 
-      THEN array_to_string(
-        ARRAY(SELECT jsonb_array_elements_text(metadata->'prerequisites')), 
-        ', '
-      )
-      ELSE NULL
-    END as class_prerequisites,
-    CASE 
-      WHEN metadata->'corequisites' IS NOT NULL
-      THEN array_to_string(
-        ARRAY(SELECT jsonb_array_elements_text(metadata->'corequisites')), 
-        ', '
-      )
-      ELSE NULL
-    END as class_corequisites,
-    CASE 
-      WHEN metadata->>'content_type' = 'course'
-      THEN substring(metadata->>'doc_id' from '/([A-Z]{2,4}-\d{2,4})-')
-      ELSE null 
-    END as course_code,
-    (embedding <=> $1::vector) as similarity_score
-FROM 
-    rag_chunks_website
-)
-ORDER BY 
-    similarity_score
-LIMIT 7`,
-      [`[${userEmbedding.join(',')}]`]
-    );
+    if (courseCodes) {
+      searchResults = await pool.query(nonVectorQuery(courseCodes), [
+        `%${courseCodes[0].toLowerCase()}%`,
+      ]);
 
-    console.log('Number of results:', searchResults.rows.length);
-    console.log('Course Codes:', searchResults.rows.map(r => r.course_code));
-    console.log('Text returned:', searchResults.rows.map(r => r.text.substring(0, 100)));
+      console.log('Non vector search results');
+    } else {
+      const userEmbedding = await generateEmbedding(message);
 
-    console.log(
-      'Similarity scores:',
-      searchResults.rows.map(r => r.similarity_score)
-    );
+      searchResults = await pool.query(vectorQuery(userEmbedding), [
+        `[${userEmbedding.join(',')}]`,
+      ]);
+
+      console.log('Number of results:', searchResults.rows.length);
+      console.log(
+        'Course Codes:',
+        searchResults.rows.map(r => r.course_code)
+      );
+      console.log(
+        'Text returned:',
+        searchResults.rows.map(r => r.text.substring(0, 100))
+      );
+
+      console.log(
+        'Similarity scores:',
+        searchResults.rows.map(r => r.similarity_score)
+      );
+    }
 
     const context = searchResults.rows
       .map(row => {
