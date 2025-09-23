@@ -14,6 +14,7 @@ const corsOptions = {
     'http://localhost:3000',
     'https://handbooky-frontend-dev.herokuapp.com',
     'https://handbooky-frontend-575fce723934.herokuapp.com',
+    'https://blazer-ai-abt.com'
   ],
   credentials: true,
 };
