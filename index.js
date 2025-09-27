@@ -53,7 +53,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// Simple test route
 app.get('/', (req, res) => {
   res.json({ message: 'Server is running!' });
 });
@@ -182,7 +181,6 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-// Basic error handling
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });

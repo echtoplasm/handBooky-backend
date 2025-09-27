@@ -1,25 +1,24 @@
-# Handbooky Backend API
-{README made with AI feel free to reach out if you have any questions}
+# Blazer AI Backend API
 
-A Node.js/Express API server that powers the Handbooky student handbook application. Features AI-powered chatbot capabilities, handbook management, and PostgreSQL database integration.
+A Node.js/Express API server that powers the Blazer AI student handbook application. Features AI-powered chatbot capabilities with vector similarity search and PostgreSQL database integration.
 
 ## Features
 
 - **AI Chat API**: Integration with Heroku Managed Inference (Claude 3.5 Haiku)
-- **Handbook Management**: CRUD operations for student handbooks
-- **AI Resources**: Storage and management of AI-generated content
-- **PostgreSQL Integration**: Full database schema for handbook data
+- **Vector Similarity Search**: Semantic search using embeddings and PostgreSQL vectors
+- **Course Code Detection**: Intelligent routing between vector and non-vector queries
+- **PostgreSQL Integration**: Vector database with embedding storage
 - **CORS Support**: Configured for frontend communication
 - **Basic Authentication**: Dev environment protection
-- **Error Handling**: Comprehensive error handling and logging
 
 ## Tech Stack
 
 - **Node.js** - Runtime environment
 - **Express.js** - Web application framework
-- **PostgreSQL** - Primary database
+- **PostgreSQL with pgvector** - Vector database for embeddings
 - **Axios** - HTTP client for AI API calls
 - **Heroku Managed Inference** - AI model hosting (Claude 3.5 Haiku)
+- **Heroku Embedding Model API** - Text embedding generation
 - **CORS** - Cross-origin resource sharing
 
 ## API Endpoints
@@ -35,11 +34,12 @@ Health check endpoint
 ```
 
 #### POST `/api/chat`
-AI chatbot endpoint for student handbook assistance
+AI chatbot endpoint for student handbook assistance with intelligent query routing
 ```json
 // Request
 {
-  "message": "What are the library hours?"
+  "message": "What are the library hours?",
+  "model": "claude-3-5-haiku"  // optional, defaults to claude-3-5-haiku
 }
 
 // Response
@@ -51,42 +51,19 @@ AI chatbot endpoint for student handbook assistance
 }
 ```
 
-### Protected Endpoints (Basic Auth Required)
+### Query Processing Logic
 
-#### POST `/handbooks`
-Create new handbook entry
-```json
-{
-  "handbook_id": "uuid",
-  "title": "Student Handbook 2025",
-  "description": "Official student handbook",
-  "file_path": "/uploads/handbook.pdf",
-  "file_size": 1024000,
-  "upload_user_id": "user-uuid",
-  "school_id": "school-uuid",
-  "grade_level": "undergraduate",
-  "subject": "general",
-  "academic_year": "2025",
-  "is_public": true
-}
-```
+The API intelligently routes queries based on content:
 
-#### POST `/air` (AI Resources)
-Store AI-generated content
-```json
-{
-  "resource_id": "uuid",
-  "section_id": "section-uuid",
-  "handbook_id": "handbook-uuid",
-  "resource_type": "summary",
-  "title": "Library Policies Summary",
-  "content": "Generated content...",
-  "content_embedding": [0.1, 0.2, ...],
-  "difficulty_level": "beginner",
-  "estimated_time_minutes": 15,
-  "generated_by_model": "claude-3-5-haiku"
-}
-```
+**Course Code Queries** (e.g., "Tell me about CSC-151")
+- Detects course codes using regex pattern `/\b([A-Z]{2,4}-\d{2,4})\b/g`
+- Uses non-vector SQL query for exact course matches
+- Returns course information with prerequisites and corequisites
+
+**General Queries** (e.g., "What are the graduation requirements?")
+- Generates embeddings using Heroku Embedding Model API
+- Performs vector similarity search using PostgreSQL pgvector
+- Returns contextually relevant information based on semantic similarity
 
 ## Environment Variables
 
@@ -94,61 +71,47 @@ Create a `.env` file in the root directory:
 
 ```env
 # Database
-DATABASE_URL=postgresql://username:password@localhost:5432/handbooky
+DATABASE_URL=postgresql://username:password@localhost:5432/blazer_ai
 
 # Authentication
 DEV_USER=dev
 DEV_PASSWORD=your_secure_password
 
-# Heroku AI Inference (set automatically when provisioned)
+# Heroku AI Services
 INFERENCE_URL=https://your-inference-url
 INFERENCE_KEY=your_inference_key
-INFERENCE_MODEL_ID=claude-3-5-haiku
 
 # Server
 PORT=5000
-NODE_ENV=development
+NODE_ENV=production
 ```
 
 ## Database Schema
 
-The application uses PostgreSQL with the following main tables:
+The application uses PostgreSQL with pgvector extension for vector similarity search:
 
-### `handbooks`
-- `handbook_id` (UUID, Primary Key)
-- `title` (VARCHAR)
-- `description` (TEXT)
-- `file_path` (VARCHAR)
-- `file_size` (INTEGER)
-- `upload_user_id` (UUID)
-- `school_id` (UUID)
-- `grade_level` (VARCHAR)
-- `subject` (VARCHAR)
-- `academic_year` (VARCHAR)
-- `is_public` (BOOLEAN)
-- `created_at` (TIMESTAMP)
-- `updated_at` (TIMESTAMP)
+### Main Table Structure
+- **Vector embeddings** stored using pgvector extension
+- **Course information** with prerequisites and corequisites
+- **Source metadata** including source type and section information
+- **Similarity scoring** for semantic search results
 
-### `ai_resources`
-- `resource_id` (UUID, Primary Key)
-- `section_id` (UUID)
-- `handbook_id` (UUID, Foreign Key)
-- `resource_type` (VARCHAR)
-- `title` (VARCHAR)
-- `content` (TEXT)
-- `content_embedding` (VECTOR)
-- `difficulty_level` (VARCHAR)
-- `estimated_time_minutes` (INTEGER)
-- `generated_by_model` (VARCHAR)
-- `created_at` (TIMESTAMP)
-- `updated_at` (TIMESTAMP)
+### Key Fields
+- `text` - Content for search and context
+- `content_embedding` - Vector embeddings for similarity search
+- `course_code` - Course identifiers for direct lookup
+- `source_type` - Type of content (handbook, website, etc.)
+- `source_info` - Additional source metadata
+- `section_type` - Section categorization
+- `class_prerequisites` - Course prerequisites
+- `class_corequisites` - Course corequisites
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js (v16 or higher)
-- PostgreSQL (v12 or higher)
+- PostgreSQL (v12 or higher) with pgvector extension
 - Heroku CLI (for AI model provisioning)
 
 ### Installation
@@ -164,15 +127,16 @@ cd backend
 npm install
 ```
 
-3. Set up PostgreSQL database
+3. Set up PostgreSQL database with pgvector
 ```bash
-createdb handbooky
+createdb blazer_ai
+# Install pgvector extension
 # Run your schema migrations here
 ```
 
 4. Configure environment variables (see above)
 
-5. Provision Heroku AI model (for production)
+5. Provision Heroku AI services
 ```bash
 heroku ai:models:create -a your-app-name claude-3-5-haiku
 ```
@@ -181,41 +145,55 @@ heroku ai:models:create -a your-app-name claude-3-5-haiku
 
 Start the development server:
 ```bash
-npm run dev
+npm start
 ```
 
 The server will be available at `http://localhost:5000`
 
 ## Frontend Integration
 
-This backend is designed to work with the React frontend. The communication flow:
-
 ### CORS Configuration
 The server accepts requests from:
 - `http://localhost:3000` (local development)
 - `https://handbooky-frontend-dev.herokuapp.com` (staging)
 - `https://handbooky-frontend-575fce723934.herokuapp.com` (production)
+- `https://blazer-ai-abt.com` (production domain)
 
 ### Chat Integration
 1. Frontend sends user messages to `/api/chat`
-2. Backend processes through Claude 3.5 Haiku with system prompt
-3. AI responses are filtered to handbook-related topics only
-4. Responses returned in structured JSON format
+2. Backend analyzes query type (course code vs. general)
+3. Routes to appropriate search method (vector vs. non-vector)
+4. Processes through Claude 3.5 Haiku with contextual information
+5. Returns structured response with source citations
 
 ### Authentication
-- Chat endpoint (`/api/chat`) is public for easy frontend access
-- Other endpoints require Basic Authentication
-- Credentials: `dev:${DEV_PASSWORD}`
+- Chat endpoint (`/api/chat`) is public for easy access
+- All other endpoints require Basic Authentication
+- Health check (`/health`) bypasses authentication
 
 ## AI Assistant Configuration
 
-The chatbot is configured with a system prompt to:
-- Focus on school policies and procedures
-- Provide academic information
-- Share campus resources information
-- Discuss student life topics
-- Redirect off-topic questions back to handbook content
-- Keep responses concise and student-friendly
+The chatbot uses a sophisticated system prompt that:
+
+### Scope Limitations
+- **School policies and procedures**
+- **Academic information** (courses, programs, requirements)
+- **Campus resources and services**
+- **Student life and activities**
+- **Admissions and registration**
+- **Financial aid and tuition**
+
+### Response Guidelines
+- Redirects off-topic questions to handbook content
+- Cites sources with specific page numbers or sections
+- Includes prerequisites and corequisites for course information
+- Maintains helpful, supportive tone for students
+- Suggests contacting appropriate offices when information unavailable
+
+### Context Enhancement
+- Provides rich context from vector search results
+- Includes source metadata for transparency
+- Handles both exact course matches and semantic queries
 
 ## Deployment
 
@@ -223,22 +201,22 @@ The chatbot is configured with a system prompt to:
 
 1. Create Heroku app
 ```bash
-heroku create your-backend-app
+heroku create blazer-ai-backend
 ```
 
-2. Add PostgreSQL addon
+2. Add PostgreSQL addon with pgvector
 ```bash
-heroku addons:create heroku-postgresql:mini -a your-backend-app
+heroku addons:create heroku-postgresql:mini -a blazer-ai-backend
 ```
 
-3. Provision AI model
+3. Provision AI services
 ```bash
-heroku ai:models:create -a your-backend-app claude-3-5-haiku
+heroku ai:models:create -a blazer-ai-backend claude-3-5-haiku
 ```
 
 4. Set environment variables
 ```bash
-heroku config:set DEV_USER=dev DEV_PASSWORD=your_password
+heroku config:set DEV_USER=dev DEV_PASSWORD=your_password NODE_ENV=production
 ```
 
 5. Deploy
@@ -246,15 +224,24 @@ heroku config:set DEV_USER=dev DEV_PASSWORD=your_password
 git push heroku main
 ```
 
+## Security Features
+
+- **HTTPS Redirect**: Automatic redirection from HTTP to HTTPS
+- **Basic Authentication** for protected endpoints  
+- **CORS** restrictions to allowed origins
+- **Input validation** for required fields
+- **Error handling** without exposing sensitive information
+- **Environment variable** protection for API keys
+
 ## API Response Formats
 
 ### Success Response
 ```json
 {
   "success": true,
-  "message": "Response content",
-  "model": "claude-3-5-haiku",
-  "timestamp": "2025-01-15T10:30:00.000Z"
+  "message": "AI-generated response with context",
+  "model": "claude-3-5-haiku", 
+  "timestamp": "2025-09-27T14:30:00.000Z"
 }
 ```
 
@@ -267,21 +254,21 @@ git push heroku main
 }
 ```
 
-## Logging
+## Logging and Monitoring
 
 The server includes comprehensive logging:
-- Request method and path logging
-- Authentication bypass notifications
-- AI API errors with full context
-- Database operation errors
+- **Request tracking**: Method and path for all requests
+- **Query type detection**: Vector vs. non-vector routing decisions
+- **Search results**: Number of results and similarity scores
+- **Authentication**: Bypass notifications for public endpoints
+- **AI API interactions**: Full error context for debugging
 
-## Security Features
+## Performance Optimizations
 
-- **Basic Authentication** for protected endpoints
-- **CORS** restrictions to allowed origins
-- **Input validation** for required fields
-- **Error handling** without exposing sensitive data
-- **Environment variable** protection for API keys
+- **Intelligent query routing** reduces unnecessary embedding generation
+- **Vector similarity search** for semantic understanding
+- **Contextual information** limits for optimal AI responses
+- **Efficient database queries** with proper indexing
 
 ## Contributing
 
