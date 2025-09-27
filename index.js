@@ -22,6 +22,15 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+
+app.use((req, res, next) => {
+  if (req.header('x-forwarded-proto') !== 'https') {
+    res.redirect(`https://${req.header('host')}${req.url}`);
+  } else {
+    next();
+  }
+});
+
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`);
   // Skip auth for health checks
